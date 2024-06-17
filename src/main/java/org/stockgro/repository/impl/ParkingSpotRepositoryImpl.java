@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -17,7 +16,7 @@ import java.util.TreeMap;
 public class ParkingSpotRepositoryImpl implements IParkingSpotRepository {
 
     private final HashMap<String, SortedMap<String, ParkingSpot>> parkingLotToSpotMap = new HashMap<>();
-    private final HashMap<String, HashMap<String, HashSet<ParkingSpot>>> parkingLotToVehicleColorToSpots = new HashMap<>();
+    private final HashMap<String, HashMap<String, HashSet<String>>> parkingLotToColorToRegistrationNoMap = new HashMap<>();
     private final HashMap<String, HashMap<String, ParkingSpot>> parkingLotToRegistrationNumberMap = new HashMap<>();
 
     @Override
@@ -35,17 +34,17 @@ public class ParkingSpotRepositoryImpl implements IParkingSpotRepository {
         if (!parkingLotToSpotMap.containsKey(parkingSpot.getParkingLotId())) {
             parkingLotToSpotMap.put(parkingSpot.getParkingLotId(), new TreeMap<>());
         }
-        if (!parkingLotToVehicleColorToSpots.containsKey(parkingSpot.getParkingLotId())) {
-            parkingLotToVehicleColorToSpots.put(parkingSpot.getParkingLotId(), new HashMap<>());
+        if (!parkingLotToColorToRegistrationNoMap.containsKey(parkingSpot.getParkingLotId())) {
+            parkingLotToColorToRegistrationNoMap.put(parkingSpot.getParkingLotId(), new HashMap<>());
         }
         if (!parkingLotToRegistrationNumberMap.containsKey(parkingSpot.getParkingLotId())) {
             parkingLotToRegistrationNumberMap.put(parkingSpot.getParkingLotId(), new HashMap<>());
         }
         if (parkingSpot.isOccupied()) {
-            if (!parkingLotToVehicleColorToSpots.get(parkingSpot.getParkingLotId()).containsKey(parkingSpot.getVehicle().getColor())) {
-                parkingLotToVehicleColorToSpots.get(parkingSpot.getParkingLotId()).put(parkingSpot.getVehicle().getColor(), new HashSet<>());
+            if (!parkingLotToColorToRegistrationNoMap.get(parkingSpot.getParkingLotId()).containsKey(parkingSpot.getVehicle().getColor())) {
+                parkingLotToColorToRegistrationNoMap.get(parkingSpot.getParkingLotId()).put(parkingSpot.getVehicle().getColor(), new HashSet<>());
             }
-            parkingLotToVehicleColorToSpots.get(parkingSpot.getParkingLotId()).get(parkingSpot.getVehicle().getColor()).add(parkingSpot);
+            parkingLotToColorToRegistrationNoMap.get(parkingSpot.getParkingLotId()).get(parkingSpot.getVehicle().getColor()).add(parkingSpot.getVehicle().getRegistrationNumber());
             parkingLotToRegistrationNumberMap.get(parkingSpot.getParkingLotId()).put(parkingSpot.getVehicle().getRegistrationNumber(), parkingSpot);
         }
         parkingLotToSpotMap.get(parkingSpot.getParkingLotId()).put(parkingSpot.getId(), parkingSpot);
@@ -60,10 +59,10 @@ public class ParkingSpotRepositoryImpl implements IParkingSpotRepository {
     }
 
     @Override
-    public List<ParkingSpot> fetchByLotIdAndColor(String parkingLotId, String color) {
-        if (parkingLotToVehicleColorToSpots.containsKey(parkingLotId)) {
-            if (parkingLotToVehicleColorToSpots.get(parkingLotId).containsKey(color)) {
-                return new ArrayList<>(parkingLotToVehicleColorToSpots.get(parkingLotId).get(color));
+    public List<String> fetchRegistrationNosByLotIdAndColor(String parkingLotId, String color) {
+        if (parkingLotToColorToRegistrationNoMap.containsKey(parkingLotId)) {
+            if (parkingLotToColorToRegistrationNoMap.get(parkingLotId).containsKey(color)) {
+                return new ArrayList<>(parkingLotToColorToRegistrationNoMap.get(parkingLotId).get(color));
             }
         }
         return new ArrayList<>();
@@ -77,5 +76,25 @@ public class ParkingSpotRepositoryImpl implements IParkingSpotRepository {
             }
         }
         return Optional.empty();
+    }
+
+    @Override
+    public Optional<ParkingSpot> fetchByRegistrationNumber(String parkingLotId, String registrationNumber) {
+        if (parkingLotToRegistrationNumberMap.containsKey(parkingLotId)) {
+            if (parkingLotToRegistrationNumberMap.get(parkingLotId).containsKey(registrationNumber)) {
+                return Optional.of(parkingLotToRegistrationNumberMap.get(parkingLotId).get(registrationNumber));
+            }
+        }
+        return Optional.empty();
+    }
+
+    @Override
+    public void removeSpotFromRegistrationNumber(String parkingLotId, String registrationNumber) {
+        parkingLotToRegistrationNumberMap.get(parkingLotId).remove(registrationNumber);
+    }
+
+    @Override
+    public void removeRegistrationNumberFromColor(String parkingLotId, String registrationNumber, String color) {
+        parkingLotToColorToRegistrationNoMap.get(parkingLotId).get(color).remove(registrationNumber);
     }
 }

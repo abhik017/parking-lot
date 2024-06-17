@@ -12,7 +12,13 @@ public interface IParkingSpotRepository {
 
     List<ParkingSpot> fetchByLotId(String parkingLotId);
 
-    List<ParkingSpot> fetchByLotIdAndColor(String parkingLotId, String color);
+    List<String> fetchRegistrationNosByLotIdAndColor(String parkingLotId, String color);
 
     Optional<ParkingSpot> fetchByLotIdAndRegistrationNumber(String parkingLotId, String registrationNumber);
+
+    void removeRegistrationNumberFromColor(String parkingLotId, String registrationNumber, String color);
+
+    void removeSpotFromRegistrationNumber(String parkingLotId, String registrationNumber);
+
+    Optional<ParkingSpot> fetchByRegistrationNumber(String parkingLotId, String registrationNumber);
 }

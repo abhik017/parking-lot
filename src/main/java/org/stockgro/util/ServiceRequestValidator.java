@@ -22,9 +22,12 @@ public class ServiceRequestValidator {
         }
     }
 
-    public static void validateSpotFillingRequest(Optional<ParkingLot> parkingLotOp, VehicleSizeEnum vehicleSize) {
+    public static void validateSpotFillingRequest(Optional<ParkingLot> parkingLotOp, Optional<ParkingSpot> parkingSpotOp, VehicleSizeEnum vehicleSize) {
         if (parkingLotOp.isEmpty()) {
             throw new IllegalArgumentException("Parking lot with given ID does not exist");
+        }
+        if (parkingSpotOp.isPresent()) {
+            throw new IllegalArgumentException("Registration number already exists");
         }
         ParkingLot parkingLot = parkingLotOp.get();
         if (parkingLot.getVehicleSizeToUnoccupiedSpotIds().get(vehicleSize).isEmpty()) {

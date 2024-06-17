@@ -64,7 +64,8 @@ public class ParkingManager implements IParkingManager {
         // NO NEED TO TAKE LOCK AS PARKING ENTRY MUST BE RESTRICTED WITH BOOM BARRIER
         try {
             Optional<ParkingLot> parkingLotOp = parkingLotRepository.fetchParkingLotById(parkingLotId);
-            ServiceRequestValidator.validateSpotFillingRequest(parkingLotOp, VehicleSizeEnum.MEDIUM); // HARDCODED
+            Optional<ParkingSpot> parkingSpotByRegNoOp = parkingSpotRepository.fetchByRegistrationNumber(parkingLotId, registrationNumber);
+            ServiceRequestValidator.validateSpotFillingRequest(parkingLotOp, parkingSpotByRegNoOp, VehicleSizeEnum.MEDIUM); // HARDCODED
             ParkingLot parkingLot = parkingLotOp.get();
 
             String parkingSpotId = ParkingManagerHelper.getEmptySpotAndMarkOccupied(parkingLot, VehicleSizeEnum.MEDIUM); // HARDCODED MEDIUM AS PER CURRENT REQUIREMENT
@@ -88,24 +89,27 @@ public class ParkingManager implements IParkingManager {
     }
 
     @Override
-    public void unFillParkingSpot(String parkingId, String parkingSpotId) {
+    public void unFillParkingSpot(String parkingLotId, String parkingSpotId) {
         try {
-            Optional<ParkingLot> parkingLotOp = parkingLotRepository.fetchParkingLotById(parkingId);
-            Optional<ParkingSpot> parkingSpotOp = parkingSpotRepository.fetchByLotIdAndSpotId(parkingId, parkingSpotId);
+            Optional<ParkingLot> parkingLotOp = parkingLotRepository.fetchParkingLotById(parkingLotId);
+            Optional<ParkingSpot> parkingSpotOp = parkingSpotRepository.fetchByLotIdAndSpotId(parkingLotId, parkingSpotId);
 
             ServiceRequestValidator.validateSpotUnFillingRequest(parkingLotOp, parkingSpotOp);
 
             ParkingLot parkingLot = parkingLotOp.get();
             ParkingSpot parkingSpot = parkingSpotOp.get();
-            String registrationNumber = parkingSpot.getVehicle().getRegistrationNumber();
+            Vehicle vehicleToBeRemoved = parkingSpot.getVehicle();
+
             parkingSpot.setOccupied(false);
             parkingSpot.setVehicle(null);
             ParkingManagerHelper.markOccupiedSpotUnoccupied(parkingLot, parkingSpotId, VehicleSizeEnum.MEDIUM); // HARDCODED MEDIUM AS PER CURRENT REQUIREMENT
 
+            parkingSpotRepository.removeSpotFromRegistrationNumber(parkingLotId, vehicleToBeRemoved.getRegistrationNumber());
+            parkingSpotRepository.removeRegistrationNumberFromColor(parkingLotId, vehicleToBeRemoved.getRegistrationNumber(), vehicleToBeRemoved.getColor());
             parkingSpotRepository.saveOrUpdateParkingSpot(parkingSpot);
             parkingLotRepository.saveOrUpdateParkingLot(parkingLot);
 
-            log.info("Car left {}", registrationNumber);
+            log.info("Car left {}", vehicleToBeRemoved.getRegistrationNumber());
         } catch (Exception ex) {
             log.error(ex.getMessage());
         }
@@ -135,15 +139,15 @@ public class ParkingManager implements IParkingManager {
             Optional<ParkingLot> parkingLotOp = parkingLotRepository.fetchParkingLotById(parkingLotId);
             ServiceRequestValidator.validateStatusRequest(parkingLotOp);
 
-            List<ParkingSpot> parkingSpots = parkingSpotRepository.fetchByLotIdAndColor(parkingLotId, color);
+            List<String> parkingSpots = parkingSpotRepository.fetchRegistrationNosByLotIdAndColor(parkingLotId, color);
             if (parkingSpots.isEmpty()) {
                 log.info("No cars with {} color are present", color);
                 return ;
             }
             log.info("Cars with {} color: ", color);
 
-            parkingSpots.forEach(spot -> {
-                log.info("{}", spot.getVehicle().getRegistrationNumber());
+            parkingSpots.forEach(registrationNumber -> {
+                log.info("{}", registrationNumber);
             });
         } catch (Exception ex) {
             log.error(ex.getMessage());
@@ -161,7 +165,7 @@ public class ParkingManager implements IParkingManager {
             parkingSpotOp.ifPresentOrElse(parkingSpot -> {
                 log.info("Car {} is parked at slot {}", registrationNumber, parkingSpot.getId());
             }, () -> {
-                log.info("No car with {} registration number is found", registrationNumber);
+                log.info("No car with registration number {} is found", registrationNumber);
             });
         } catch (Exception ex) {
             log.error(ex.getMessage());
